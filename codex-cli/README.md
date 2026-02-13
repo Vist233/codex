@@ -1,12 +1,12 @@
-<h1 align="center">OpenAI Codex CLI</h1>
+<h1 align="center">OpenAI infinityCodex CLI</h1>
 <p align="center">Lightweight coding agent that runs in your terminal</p>
 
-<p align="center"><code>npm i -g @openai/codex</code></p>
+<p align="center"><code>npm i -g @infinity/codex</code></p>
 
 > [!IMPORTANT]
-> This is the documentation for the _legacy_ TypeScript implementation of the Codex CLI. It has been superseded by the _Rust_ implementation. See the [README in the root of the Codex repository](https://github.com/openai/codex/blob/main/README.md) for details.
+> This is the documentation for the _legacy_ TypeScript implementation of the infinityCodex CLI. It has been superseded by the _Rust_ implementation. See the [README in the root of the infinityCodex repository](https://github.com/openai/codex/blob/main/README.md) for details.
 
-![Codex demo GIF using: codex "explain this codebase to me"](../.github/demo.gif)
+![infinityCodex demo GIF using: infinity-codex "explain this codebase to me"](../.github/demo.gif)
 
 ---
 
@@ -17,7 +17,7 @@
 
 - [Experimental technology disclaimer](#experimental-technology-disclaimer)
 - [Quickstart](#quickstart)
-- [Why Codex?](#why-codex)
+- [Why infinityCodex?](#why-infinity-codex)
 - [Security model & permissions](#security-model--permissions)
   - [Platform sandboxing details](#platform-sandboxing-details)
 - [System requirements](#system-requirements)
@@ -37,7 +37,7 @@
   - [Environment variables setup](#environment-variables-setup)
 - [FAQ](#faq)
 - [Zero data retention (ZDR) usage](#zero-data-retention-zdr-usage)
-- [Codex open source fund](#codex-open-source-fund)
+- [infinityCodex open source fund](#infinity-codex-open-source-fund)
 - [Contributing](#contributing)
   - [Development workflow](#development-workflow)
   - [Git hooks with Husky](#git-hooks-with-husky)
@@ -49,7 +49,7 @@
   - [Getting help](#getting-help)
   - [Contributor license agreement (CLA)](#contributor-license-agreement-cla)
     - [Quick fixes](#quick-fixes)
-  - [Releasing `codex`](#releasing-codex)
+  - [Releasing `infinity-codex`](#releasing-infinity-codex)
   - [Alternative build options](#alternative-build-options)
     - [Nix flake development](#nix-flake-development)
 - [Security & responsible AI](#security--responsible-ai)
@@ -63,7 +63,7 @@
 
 ## Experimental technology disclaimer
 
-Codex CLI is an experimental project under active development. It is not yet stable, may contain bugs, incomplete features, or undergo breaking changes. We're building it in the open with the community and welcome:
+infinityCodex CLI is an experimental project under active development. It is not yet stable, may contain bugs, incomplete features, or undergo breaking changes. We're building it in the open with the community and welcome:
 
 - Bug reports
 - Feature requests
@@ -77,7 +77,7 @@ Help us improve by filing issues or submitting PRs (see the section below for ho
 Install globally:
 
 ```shell
-npm install -g @openai/codex
+npm install -g @infinity/codex
 ```
 
 Next, set your OpenAI API key as an environment variable:
@@ -97,7 +97,7 @@ export OPENAI_API_KEY="your-api-key-here"
 <details>
 <summary><strong>Use <code>--provider</code> to use other models</strong></summary>
 
-> Codex also allows you to use other providers that support the OpenAI Chat Completions API. You can set the provider in the config file or use the `--provider` flag. The possible options for `--provider` are:
+> infinityCodex also allows you to use other providers that support the OpenAI Chat Completions API. You can set the provider in the config file or use the `--provider` flag. The possible options for `--provider` are:
 >
 > - openai (default)
 > - openrouter
@@ -129,28 +129,28 @@ export OPENAI_API_KEY="your-api-key-here"
 Run interactively:
 
 ```shell
-codex
+infinity-codex
 ```
 
 Or, run with a prompt as input (and optionally in `Full Auto` mode):
 
 ```shell
-codex "explain this codebase to me"
+infinity-codex "explain this codebase to me"
 ```
 
 ```shell
-codex --approval-mode full-auto "create the fanciest todo-list app"
+infinity-codex --approval-mode full-auto "create the fanciest todo-list app"
 ```
 
-That's it - Codex will scaffold a file, run it inside a sandbox, install any
+That's it - infinityCodex will scaffold a file, run it inside a sandbox, install any
 missing dependencies, and show you the live result. Approve the changes and
 they'll be committed to your working directory.
 
 ---
 
-## Why Codex?
+## Why infinityCodex?
 
-Codex CLI is built for developers who already **live in the terminal** and want
+infinityCodex CLI is built for developers who already **live in the terminal** and want
 ChatGPT-level reasoning **plus** the power to actually run code, manipulate
 files, and iterate - all under version control. In short, it's _chat-driven
 development_ that understands and executes your repo.
@@ -165,7 +165,7 @@ And it's **fully open-source** so you can see and contribute to how it develops!
 
 ## Security model & permissions
 
-Codex lets you decide _how much autonomy_ the agent receives and auto-approval policy via the
+infinityCodex lets you decide _how much autonomy_ the agent receives and auto-approval policy via the
 `--approval-mode` flag (or the interactive onboarding prompt):
 
 | Mode                      | What the agent may do without asking                                                                | Still requires approval                                                                         |
@@ -175,7 +175,7 @@ Codex lets you decide _how much autonomy_ the agent receives and auto-approval p
 | **Full Auto**             | <li>Read/write files <li> Execute shell commands (network disabled, writes limited to your workdir) | -                                                                                               |
 
 In **Full Auto** every command is run **network-disabled** and confined to the
-current working directory (plus temporary files) for defense-in-depth. Codex
+current working directory (plus temporary files) for defense-in-depth. infinityCodex
 will also show a warning/confirmation if you start in **auto-edit** or
 **full-auto** while the directory is _not_ tracked by Git, so you always have a
 safety net.
@@ -185,7 +185,7 @@ the network enabled, once we're confident in additional safeguards.
 
 ### Platform sandboxing details
 
-The hardening mechanism Codex uses depends on your OS:
+The hardening mechanism infinityCodex uses depends on your OS:
 
 - **macOS 12+** - commands are wrapped with **Apple Seatbelt** (`sandbox-exec`).
 
@@ -195,7 +195,7 @@ The hardening mechanism Codex uses depends on your OS:
     tries to `curl` somewhere it will fail.
 
 - **Linux** - there is no sandboxing by default.
-  We recommend using Docker for sandboxing, where Codex launches itself inside a **minimal
+  We recommend using Docker for sandboxing, where infinityCodex launches itself inside a **minimal
   container image** and mounts your repo _read/write_ at the same path. A
   custom `iptables`/`ipset` firewall script denies all egress except the
   OpenAI API. This gives you deterministic, reproducible runs without needing
@@ -220,10 +220,10 @@ The hardening mechanism Codex uses depends on your OS:
 
 | Command                              | Purpose                             | Example                              |
 | ------------------------------------ | ----------------------------------- | ------------------------------------ |
-| `codex`                              | Interactive REPL                    | `codex`                              |
-| `codex "..."`                        | Initial prompt for interactive REPL | `codex "fix lint errors"`            |
-| `codex -q "..."`                     | Non-interactive "quiet mode"        | `codex -q --json "explain utils.ts"` |
-| `codex completion <bash\|zsh\|fish>` | Print shell completion script       | `codex completion bash`              |
+| `infinity-codex`                              | Interactive REPL                    | `infinity-codex`                              |
+| `infinity-codex "..."`                        | Initial prompt for interactive REPL | `infinity-codex "fix lint errors"`            |
+| `infinity-codex -q "..."`                     | Non-interactive "quiet mode"        | `infinity-codex -q --json "explain utils.ts"` |
+| `infinity-codex completion <bash\|zsh\|fish>` | Print shell completion script       | `infinity-codex completion bash`              |
 
 Key flags: `--model/-m`, `--approval-mode/-a`, `--quiet/-q`, and `--notify`.
 
@@ -231,7 +231,7 @@ Key flags: `--model/-m`, `--approval-mode/-a`, `--quiet/-q`, and `--notify`.
 
 ## Memory & project docs
 
-You can give Codex extra instructions and guidance using `AGENTS.md` files. Codex looks for `AGENTS.md` files in the following places, and merges them top-down:
+You can give infinityCodex extra instructions and guidance using `AGENTS.md` files. infinityCodex looks for `AGENTS.md` files in the following places, and merges them top-down:
 
 1. `~/.codex/AGENTS.md` - personal global guidance
 2. `AGENTS.md` at repo root - shared project notes
@@ -243,14 +243,14 @@ Disable loading of these files with `--no-project-doc` or the environment variab
 
 ## Non-interactive / CI mode
 
-Run Codex head-less in pipelines. Example GitHub Action step:
+Run infinityCodex head-less in pipelines. Example GitHub Action step:
 
 ```yaml
-- name: Update changelog via Codex
+- name: Update changelog via infinityCodex
   run: |
-    npm install -g @openai/codex
+    npm install -g @infinity/codex
     export OPENAI_API_KEY="${{ secrets.OPENAI_KEY }}"
-    codex -a auto-edit --quiet "update CHANGELOG for next release"
+    infinity-codex -a auto-edit --quiet "update CHANGELOG for next release"
 ```
 
 Set `CODEX_QUIET_MODE=1` to silence interactive UI noise.
@@ -260,7 +260,7 @@ Set `CODEX_QUIET_MODE=1` to silence interactive UI noise.
 Setting the environment variable `DEBUG=true` prints full API request and response details:
 
 ```shell
-DEBUG=true codex
+DEBUG=true infinity-codex
 ```
 
 ---
@@ -271,13 +271,13 @@ Below are a few bite-size examples you can copy-paste. Replace the text in quote
 
 | ✨  | What you type                                                                   | What happens                                                               |
 | --- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1   | `codex "Refactor the Dashboard component to React Hooks"`                       | Codex rewrites the class component, runs `npm test`, and shows the diff.   |
-| 2   | `codex "Generate SQL migrations for adding a users table"`                      | Infers your ORM, creates migration files, and runs them in a sandboxed DB. |
-| 3   | `codex "Write unit tests for utils/date.ts"`                                    | Generates tests, executes them, and iterates until they pass.              |
-| 4   | `codex "Bulk-rename *.jpeg -> *.jpg with git mv"`                               | Safely renames files and updates imports/usages.                           |
-| 5   | `codex "Explain what this regex does: ^(?=.*[A-Z]).{8,}$"`                      | Outputs a step-by-step human explanation.                                  |
-| 6   | `codex "Carefully review this repo, and propose 3 high impact well-scoped PRs"` | Suggests impactful PRs in the current codebase.                            |
-| 7   | `codex "Look for vulnerabilities and create a security review report"`          | Finds and explains security bugs.                                          |
+| 1   | `infinity-codex "Refactor the Dashboard component to React Hooks"`                       | infinityCodex rewrites the class component, runs `npm test`, and shows the diff.   |
+| 2   | `infinity-codex "Generate SQL migrations for adding a users table"`                      | Infers your ORM, creates migration files, and runs them in a sandboxed DB. |
+| 3   | `infinity-codex "Write unit tests for utils/date.ts"`                                    | Generates tests, executes them, and iterates until they pass.              |
+| 4   | `infinity-codex "Bulk-rename *.jpeg -> *.jpg with git mv"`                               | Safely renames files and updates imports/usages.                           |
+| 5   | `infinity-codex "Explain what this regex does: ^(?=.*[A-Z]).{8,}$"`                      | Outputs a step-by-step human explanation.                                  |
+| 6   | `infinity-codex "Carefully review this repo, and propose 3 high impact well-scoped PRs"` | Suggests impactful PRs in the current codebase.                            |
+| 7   | `infinity-codex "Look for vulnerabilities and create a security review report"`          | Finds and explains security bugs.                                          |
 
 ---
 
@@ -287,13 +287,13 @@ Below are a few bite-size examples you can copy-paste. Replace the text in quote
 <summary><strong>From npm (Recommended)</strong></summary>
 
 ```bash
-npm install -g @openai/codex
+npm install -g @infinity/codex
 # or
-yarn global add @openai/codex
+yarn global add @infinity/codex
 # or
-bun install -g @openai/codex
+bun install -g @infinity/codex
 # or
-pnpm add -g @openai/codex
+pnpm add -g @infinity/codex
 ```
 
 </details>
@@ -332,7 +332,7 @@ pnpm link
 
 ## Configuration guide
 
-Codex configuration files can be placed in the `~/.codex/` directory, supporting both YAML and JSON formats.
+infinityCodex configuration files can be placed in the `~/.codex/` directory, supporting both YAML and JSON formats.
 
 ### Basic configuration parameters
 
@@ -485,9 +485,9 @@ export OPENROUTER_API_KEY="your-openrouter-key-here"
 ## FAQ
 
 <details>
-<summary>OpenAI released a model called Codex in 2021 - is this related?</summary>
+<summary>OpenAI released a model called infinityCodex in 2021 - is this related?</summary>
 
-In 2021, OpenAI released Codex, an AI system designed to generate code from natural language prompts. That original Codex model was deprecated as of March 2023 and is separate from the CLI tool.
+In 2021, OpenAI released infinityCodex, an AI system designed to generate code from natural language prompts. That original infinityCodex model was deprecated as of March 2023 and is separate from the CLI tool.
 
 </details>
 
@@ -505,15 +505,15 @@ It's possible that your [API account needs to be verified](https://help.openai.c
 </details>
 
 <details>
-<summary>How do I stop Codex from editing my files?</summary>
+<summary>How do I stop infinityCodex from editing my files?</summary>
 
-Codex runs model-generated commands in a sandbox. If a proposed command or file change doesn't look right, you can simply type **n** to deny the command or give the model feedback.
+infinityCodex runs model-generated commands in a sandbox. If a proposed command or file change doesn't look right, you can simply type **n** to deny the command or give the model feedback.
 
 </details>
 <details>
 <summary>Does it work on Windows?</summary>
 
-Not directly. It requires [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install) - Codex is regularly tested on macOS and Linux with Node 20+, and also supports Node 16.
+Not directly. It requires [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install) - infinityCodex is regularly tested on macOS and Linux with Node 20+, and also supports Node 16.
 
 </details>
 
@@ -521,19 +521,19 @@ Not directly. It requires [Windows Subsystem for Linux (WSL2)](https://learn.mic
 
 ## Zero data retention (ZDR) usage
 
-Codex CLI **does** support OpenAI organizations with [Zero Data Retention (ZDR)](https://platform.openai.com/docs/guides/your-data#zero-data-retention) enabled. If your OpenAI organization has Zero Data Retention enabled and you still encounter errors such as:
+infinityCodex CLI **does** support OpenAI organizations with [Zero Data Retention (ZDR)](https://platform.openai.com/docs/guides/your-data#zero-data-retention) enabled. If your OpenAI organization has Zero Data Retention enabled and you still encounter errors such as:
 
 ```
 OpenAI rejected the request. Error details: Status: 400, Code: unsupported_parameter, Type: invalid_request_error, Message: 400 Previous response cannot be used for this organization due to Zero Data Retention.
 ```
 
-You may need to upgrade to a more recent version with: `npm i -g @openai/codex@latest`
+You may need to upgrade to a more recent version with: `npm i -g @infinity/codex@latest`
 
 ---
 
-## Codex open source fund
+## infinityCodex open source fund
 
-We're excited to launch a **$1 million initiative** supporting open source projects that use Codex CLI and other OpenAI models.
+We're excited to launch a **$1 million initiative** supporting open source projects that use infinityCodex CLI and other OpenAI models.
 
 - Grants are awarded up to **$25,000** API credits.
 - Applications are reviewed **on a rolling basis**.
@@ -602,7 +602,7 @@ To debug the CLI with a visual debugger, do the following in the `codex-cli` fol
 
 1. **Start with an issue.** Open a new one or comment on an existing discussion so we can agree on the solution before code is written.
 2. **Add or update tests.** Every new feature or bug-fix should come with test coverage that fails before your change and passes afterwards. 100% coverage is not required, but aim for meaningful assertions.
-3. **Document behaviour.** If your change affects user-facing behaviour, update the README, inline help (`codex --help`), or relevant example projects.
+3. **Document behaviour.** If your change affects user-facing behaviour, update the README, inline help (`infinity-codex --help`), or relevant example projects.
 4. **Keep commits atomic.** Each commit should compile and the tests should pass. This makes reviews and potential rollbacks easier.
 
 ### Opening a pull request
@@ -628,7 +628,7 @@ To debug the CLI with a visual debugger, do the following in the `codex-cli` fol
 
 If you run into problems setting up the project, would like feedback on an idea, or just want to say _hi_ - please open a Discussion or jump into the relevant issue. We are happy to help.
 
-Together we can make Codex CLI an incredible tool. **Happy hacking!** :rocket:
+Together we can make infinityCodex CLI an incredible tool. **Happy hacking!** :rocket:
 
 ### Contributor license agreement (CLA)
 
@@ -653,7 +653,7 @@ No special Git commands, email attachments, or commit footers required.
 
 The **DCO check** blocks merges until every commit in the PR carries the footer (with squash this is just the one).
 
-### Releasing `codex`
+### Releasing `infinity-codex`
 
 To publish a new version of the CLI you first need to stage the npm package. A
 helper script in `codex-cli/scripts/` does all the heavy lifting. Inside the
@@ -693,7 +693,7 @@ nix develop .#codex-cli # For entering codex-cli specific shell
 nix develop .#codex-rs # For entering codex-rs specific shell
 ```
 
-This shell includes Node.js, installs dependencies, builds the CLI, and provides a `codex` command alias.
+This shell includes Node.js, installs dependencies, builds the CLI, and provides a `infinity-codex` command alias.
 
 Build and run the CLI directly:
 
