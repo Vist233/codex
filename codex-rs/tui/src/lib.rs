@@ -15,6 +15,9 @@ use codex_core::RolloutRecorder;
 use codex_core::ThreadSortKey;
 use codex_core::auth::AuthMode;
 use codex_core::auth::enforce_login_restrictions;
+use codex_core::auth::infinity_env_only_auth_enabled;
+use codex_core::auth::read_codex_api_key_from_env;
+use codex_core::auth::read_openai_api_key_from_env;
 use codex_core::config::Config;
 use codex_core::config::ConfigBuilder;
 use codex_core::config::ConfigOverrides;
@@ -218,7 +221,7 @@ pub async fn run_main(
 
     let cloud_auth_manager = AuthManager::shared(
         codex_home.to_path_buf(),
-        false,
+        true,
         config_toml.cli_auth_credentials_store.unwrap_or_default(),
     );
     let chatgpt_base_url = config_toml
@@ -468,9 +471,20 @@ async fn run_ratatui_app(
 
     let auth_manager = AuthManager::shared(
         initial_config.codex_home.clone(),
-        false,
+        true,
         initial_config.cli_auth_credentials_store_mode,
     );
+    if initial_config.model_provider.requires_openai_auth
+        && infinity_env_only_auth_enabled()
+        && read_codex_api_key_from_env()
+            .or_else(read_openai_api_key_from_env)
+            .is_none()
+    {
+        eprintln!(
+            "Infinity Codex requires CODEX_API_KEY or OPENAI_API_KEY when env-only auth is enabled."
+        );
+        std::process::exit(1);
+    }
     let login_status = get_login_status(&initial_config);
     let should_show_trust_screen_flag = should_show_trust_screen(&initial_config);
     let should_show_onboarding =
@@ -836,6 +850,16 @@ pub enum LoginStatus {
 }
 
 fn get_login_status(config: &Config) -> LoginStatus {
+    if infinity_env_only_auth_enabled() {
+        if read_codex_api_key_from_env()
+            .or_else(read_openai_api_key_from_env)
+            .is_some()
+        {
+            return LoginStatus::AuthMode(AuthMode::ApiKey);
+        }
+        return LoginStatus::NotAuthenticated;
+    }
+
     if config.model_provider.requires_openai_auth {
         // Reading the OpenAI API key is an async operation because it may need
         // to refresh the token. Block on it.
@@ -910,6 +934,10 @@ fn should_show_onboarding(
 }
 
 fn should_show_login_screen(login_status: LoginStatus, config: &Config) -> bool {
+    if infinity_env_only_auth_enabled() {
+        return false;
+    }
+
     // Only show the login screen for providers that actually require OpenAI auth
     // (OpenAI or equivalents). For OSS/other providers, skip login entirely.
     if !config.model_provider.requires_openai_auth {

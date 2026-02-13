@@ -20,6 +20,9 @@ use codex_core::NewThread;
 use codex_core::OLLAMA_OSS_PROVIDER_ID;
 use codex_core::ThreadManager;
 use codex_core::auth::enforce_login_restrictions;
+use codex_core::auth::infinity_env_only_auth_enabled;
+use codex_core::auth::read_codex_api_key_from_env;
+use codex_core::auth::read_openai_api_key_from_env;
 use codex_core::config::Config;
 use codex_core::config::ConfigBuilder;
 use codex_core::config::ConfigOverrides;
@@ -197,7 +200,7 @@ pub async fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> any
 
     let cloud_auth_manager = AuthManager::shared(
         codex_home.clone(),
-        false,
+        true,
         config_toml.cli_auth_credentials_store.unwrap_or_default(),
     );
     let chatgpt_base_url = config_toml
@@ -272,6 +275,16 @@ pub async fn run_main(cli: Cli, codex_linux_sandbox_exe: Option<PathBuf>) -> any
     if let Err(err) = enforce_login_restrictions(&config) {
         eprintln!("{err}");
         std::process::exit(1);
+    }
+    if config.model_provider.requires_openai_auth
+        && infinity_env_only_auth_enabled()
+        && read_codex_api_key_from_env()
+            .or_else(read_openai_api_key_from_env)
+            .is_none()
+    {
+        return Err(anyhow::anyhow!(
+            "Infinity Codex requires CODEX_API_KEY or OPENAI_API_KEY when env-only auth is enabled."
+        ));
     }
 
     let otel = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

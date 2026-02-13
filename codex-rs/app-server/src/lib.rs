@@ -273,7 +273,7 @@ pub async fn run_main_with_transport(
 
             let auth_manager = AuthManager::shared(
                 config.codex_home.clone(),
-                false,
+                true,
                 config.cli_auth_credentials_store_mode,
             );
             cloud_requirements_loader(

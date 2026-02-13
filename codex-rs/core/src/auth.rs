@@ -356,6 +356,7 @@ impl ChatgptAuth {
 
 pub const OPENAI_API_KEY_ENV_VAR: &str = "OPENAI_API_KEY";
 pub const CODEX_API_KEY_ENV_VAR: &str = "CODEX_API_KEY";
+pub const INFINITY_CODEX_ENV_ONLY_AUTH_ENV_VAR: &str = "INFINITY_CODEX_ENV_ONLY_AUTH";
 
 pub fn read_openai_api_key_from_env() -> Option<String> {
     env::var(OPENAI_API_KEY_ENV_VAR)
@@ -369,6 +370,17 @@ pub fn read_codex_api_key_from_env() -> Option<String> {
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+pub fn infinity_env_only_auth_enabled() -> bool {
+    if cfg!(test) {
+        return false;
+    }
+    std::env::var(INFINITY_CODEX_ENV_ONLY_AUTH_ENV_VAR)
+        .ok()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .map(|value| !matches!(value.as_str(), "0" | "false" | "off" | "no"))
+        .unwrap_or(true)
 }
 
 /// Delete the auth.json file inside `codex_home` if it exists. Returns `Ok(true)`
@@ -547,6 +559,14 @@ fn load_auth(
         let client = crate::default_client::create_client();
         CodexAuth::from_auth_dot_json(codex_home, auth_dot_json, storage_mode, client)
     };
+
+    if infinity_env_only_auth_enabled() {
+        let env_api_key = read_codex_api_key_from_env().or_else(read_openai_api_key_from_env);
+        return Ok(env_api_key.map(|api_key| {
+            let client = crate::default_client::create_client();
+            CodexAuth::from_api_key_with_client(api_key.as_str(), client)
+        }));
+    }
 
     // API key via env var takes precedence over any other auth method.
     if enable_codex_api_key_env && let Some(api_key) = read_codex_api_key_from_env() {

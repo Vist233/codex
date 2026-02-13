@@ -162,7 +162,7 @@ impl MessageProcessor {
         } = args;
         let auth_manager = AuthManager::shared(
             config.codex_home.clone(),
-            false,
+            true,
             config.cli_auth_credentials_store_mode,
         );
         auth_manager.set_forced_chatgpt_workspace_id(config.forced_chatgpt_workspace_id.clone());

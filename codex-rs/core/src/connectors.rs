@@ -200,7 +200,7 @@ fn write_cached_accessible_connectors(
 fn auth_manager_from_config(config: &Config) -> std::sync::Arc<AuthManager> {
     AuthManager::shared(
         config.codex_home.clone(),
-        false,
+        true,
         config.cli_auth_credentials_store_mode,
     )
 }

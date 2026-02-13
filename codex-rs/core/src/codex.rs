@@ -67,8 +67,10 @@ use codex_protocol::protocol::HasLegacyEvent;
 use codex_protocol::protocol::ItemCompletedEvent;
 use codex_protocol::protocol::ItemStartedEvent;
 use codex_protocol::protocol::RawResponseItemEvent;
+use codex_protocol::protocol::ReadOnlyAccess;
 use codex_protocol::protocol::ReviewRequest;
 use codex_protocol::protocol::RolloutItem;
+use codex_protocol::protocol::SandboxPolicy;
 use codex_protocol::protocol::SessionSource;
 use codex_protocol::protocol::SubAgentSource;
 use codex_protocol::protocol::TurnAbortReason;
@@ -274,6 +276,51 @@ pub struct CodexSpawnOk {
 
 pub(crate) const INITIAL_SUBMIT_ID: &str = "";
 pub(crate) const SUBMISSION_CHANNEL_CAPACITY: usize = 64;
+const INFINITY_SESSION_ISOLATION_ENV_VAR: &str = "INFINITY_CODEX_SESSION_ISOLATION";
+
+fn infinity_session_isolation_enabled() -> bool {
+    if cfg!(test) {
+        return false;
+    }
+    std::env::var(INFINITY_SESSION_ISOLATION_ENV_VAR)
+        .ok()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .map(|value| !matches!(value.as_str(), "0" | "false" | "off" | "no"))
+        .unwrap_or(true)
+}
+
+fn apply_infinity_session_isolation(
+    session_configuration: &mut SessionConfiguration,
+    conversation_id: ThreadId,
+) -> anyhow::Result<()> {
+    if !infinity_session_isolation_enabled() {
+        return Ok(());
+    }
+
+    let session_id = conversation_id.to_string();
+    let session_prefix = session_id.chars().take(5).collect::<String>();
+    let session_dir = session_configuration
+        .cwd
+        .join(".infinity-sessions")
+        .join(session_prefix);
+    std::fs::create_dir_all(&session_dir)?;
+
+    let session_root = AbsolutePathBuf::from_absolute_path(session_dir.clone())
+        .map_err(anyhow::Error::from)?;
+    let sandbox_policy = SandboxPolicy::WorkspaceWrite {
+        writable_roots: vec![session_root],
+        read_only_access: ReadOnlyAccess::FullAccess,
+        network_access: false,
+        exclude_tmpdir_env_var: true,
+        exclude_slash_tmp: true,
+    };
+    session_configuration
+        .sandbox_policy
+        .set(sandbox_policy)
+        .map_err(|err| anyhow::anyhow!("failed to apply Infinity sandbox policy: {err}"))?;
+    session_configuration.cwd = session_dir;
+    Ok(())
+}
 
 impl Codex {
     /// Spawn a new [`Codex`] and initialize the session.
@@ -1053,6 +1100,7 @@ impl Session {
             ),
             InitialHistory::New | InitialHistory::Forked(_) => None,
         };
+        apply_infinity_session_isolation(&mut session_configuration, conversation_id)?;
 
         // Kick off independent async setup tasks in parallel to reduce startup latency.
         //

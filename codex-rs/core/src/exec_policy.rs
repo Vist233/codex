@@ -171,6 +171,31 @@ impl ExecPolicyManager {
         } = req;
         let exec_policy = self.current();
         let (commands, used_heredoc_fallback) = commands_for_exec_policy(command);
+        if commands.iter().any(|cmd| is_permission_change_command(cmd)) {
+            return ExecApprovalRequirement::Forbidden {
+                reason: "permission-changing commands are blocked by Infinity Codex policy"
+                    .to_string(),
+            };
+        }
+        if commands.iter().any(|cmd| is_sudo_apt_install_command(cmd)) {
+            return ExecApprovalRequirement::Skip {
+                bypass_sandbox: false,
+                proposed_execpolicy_amendment: None,
+            };
+        }
+        if commands.iter().any(|cmd| is_sudo_command(cmd)) {
+            return if matches!(approval_policy, AskForApproval::Never) {
+                ExecApprovalRequirement::Forbidden {
+                    reason: "sudo commands require approval, but approvals are disabled"
+                        .to_string(),
+                }
+            } else {
+                ExecApprovalRequirement::NeedsApproval {
+                    reason: Some("sudo commands require explicit approval".to_string()),
+                    proposed_execpolicy_amendment: None,
+                }
+            };
+        }
         // Keep heredoc prefix parsing for rule evaluation so existing
         // allow/prompt/forbidden rules still apply, but avoid auto-derived
         // amendments when only the heredoc fallback parser matched.
@@ -250,6 +275,26 @@ impl ExecPolicyManager {
         self.policy.store(Arc::new(updated_policy));
         Ok(())
     }
+}
+
+fn program_name(command: &[String]) -> Option<&str> {
+    command.first().map(String::as_str)
+}
+
+fn is_sudo_command(command: &[String]) -> bool {
+    matches!(program_name(command), Some("sudo"))
+}
+
+fn is_sudo_apt_install_command(command: &[String]) -> bool {
+    command.len() >= 3 && command[0] == "sudo" && command[1] == "apt" && command[2] == "install"
+}
+
+fn is_permission_change_command(command: &[String]) -> bool {
+    let program = match program_name(command) {
+        Some("sudo") => command.get(1).map(String::as_str),
+        other => other,
+    };
+    matches!(program, Some("chmod" | "chown" | "chgrp"))
 }
 
 impl Default for ExecPolicyManager {

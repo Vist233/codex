@@ -174,6 +174,7 @@ use codex_core::ThreadManager;
 use codex_core::ThreadSortKey as CoreThreadSortKey;
 use codex_core::auth::AuthMode as CoreAuthMode;
 use codex_core::auth::CLIENT_ID;
+use codex_core::auth::infinity_env_only_auth_enabled;
 use codex_core::auth::login_with_api_key;
 use codex_core::auth::login_with_chatgpt_auth_tokens;
 use codex_core::config::Config;
@@ -332,6 +333,14 @@ pub(crate) struct CodexMessageProcessorArgs {
 }
 
 impl CodexMessageProcessor {
+    fn env_only_auth_disabled_error(&self) -> JSONRPCErrorError {
+        JSONRPCErrorError {
+            code: INVALID_REQUEST_ERROR_CODE,
+            message: "Login is disabled in env-only auth mode. Set CODEX_API_KEY or OPENAI_API_KEY before starting Infinity Codex.".to_string(),
+            data: None,
+        }
+    }
+
     async fn load_thread(
         &self,
         thread_id: &str,
@@ -787,6 +796,13 @@ impl CodexMessageProcessor {
     }
 
     async fn login_v2(&mut self, request_id: ConnectionRequestId, params: LoginAccountParams) {
+        if infinity_env_only_auth_enabled() {
+            self.outgoing
+                .send_error(request_id, self.env_only_auth_disabled_error())
+                .await;
+            return;
+        }
+
         match params {
             LoginAccountParams::ApiKey { api_key } => {
                 self.login_api_key_v2(request_id, LoginApiKeyParams { api_key })
@@ -824,6 +840,10 @@ impl CodexMessageProcessor {
         &mut self,
         params: &LoginApiKeyParams,
     ) -> std::result::Result<(), JSONRPCErrorError> {
+        if infinity_env_only_auth_enabled() {
+            return Err(self.env_only_auth_disabled_error());
+        }
+
         if self.auth_manager.is_external_auth_active() {
             return Err(self.external_auth_active_error());
         }
@@ -934,6 +954,10 @@ impl CodexMessageProcessor {
     async fn login_chatgpt_common(
         &self,
     ) -> std::result::Result<LoginServerOptions, JSONRPCErrorError> {
+        if infinity_env_only_auth_enabled() {
+            return Err(self.env_only_auth_disabled_error());
+        }
+
         let config = self.config.as_ref();
 
         if self.auth_manager.is_external_auth_active() {
@@ -1245,6 +1269,13 @@ impl CodexMessageProcessor {
         chatgpt_account_id: String,
         chatgpt_plan_type: Option<String>,
     ) {
+        if infinity_env_only_auth_enabled() {
+            self.outgoing
+                .send_error(request_id, self.env_only_auth_disabled_error())
+                .await;
+            return;
+        }
+
         if matches!(
             self.config.forced_login_method,
             Some(ForcedLoginMethod::Api)

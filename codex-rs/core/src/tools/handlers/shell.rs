@@ -3,6 +3,8 @@ use codex_protocol::ThreadId;
 use codex_protocol::models::FunctionCallOutputBody;
 use codex_protocol::models::ShellCommandToolCallParams;
 use codex_protocol::models::ShellToolCallParams;
+use std::path::Component;
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::codex::TurnContext;
@@ -43,14 +45,38 @@ struct RunExecLikeArgs {
 }
 
 impl ShellHandler {
+    fn resolve_workdir_strict(
+        turn_context: &TurnContext,
+        workdir: Option<String>,
+    ) -> Result<std::path::PathBuf, FunctionCallError> {
+        let Some(workdir) = workdir else {
+            return Ok(turn_context.cwd.clone());
+        };
+        let path = Path::new(&workdir);
+        if path.is_absolute() || path.components().any(|component| component == Component::ParentDir)
+        {
+            return Err(FunctionCallError::RespondToModel(
+                "workdir must be a relative path inside the session working directory"
+                    .to_string(),
+            ));
+        }
+        let resolved = turn_context.resolve_path(Some(workdir));
+        if !resolved.starts_with(&turn_context.cwd) {
+            return Err(FunctionCallError::RespondToModel(
+                "workdir escapes the session working directory".to_string(),
+            ));
+        }
+        Ok(resolved)
+    }
+
     fn to_exec_params(
         params: &ShellToolCallParams,
         turn_context: &TurnContext,
         thread_id: ThreadId,
-    ) -> ExecParams {
-        ExecParams {
+    ) -> Result<ExecParams, FunctionCallError> {
+        Ok(ExecParams {
             command: params.command.clone(),
-            cwd: turn_context.resolve_path(params.workdir.clone()),
+            cwd: Self::resolve_workdir_strict(turn_context, params.workdir.clone())?,
             expiration: params.timeout_ms.into(),
             env: create_env(&turn_context.shell_environment_policy, Some(thread_id)),
             network: turn_context.network.clone(),
@@ -58,7 +84,7 @@ impl ShellHandler {
             windows_sandbox_level: turn_context.windows_sandbox_level,
             justification: params.justification.clone(),
             arg0: None,
-        }
+        })
     }
 }
 
@@ -73,13 +99,13 @@ impl ShellCommandHandler {
         session: &crate::codex::Session,
         turn_context: &TurnContext,
         thread_id: ThreadId,
-    ) -> ExecParams {
+    ) -> Result<ExecParams, FunctionCallError> {
         let shell = session.user_shell();
         let command = Self::base_command(shell.as_ref(), &params.command, params.login);
 
-        ExecParams {
+        Ok(ExecParams {
             command,
-            cwd: turn_context.resolve_path(params.workdir.clone()),
+            cwd: ShellHandler::resolve_workdir_strict(turn_context, params.workdir.clone())?,
             expiration: params.timeout_ms.into(),
             env: create_env(&turn_context.shell_environment_policy, Some(thread_id)),
             network: turn_context.network.clone(),
@@ -87,7 +113,7 @@ impl ShellCommandHandler {
             windows_sandbox_level: turn_context.windows_sandbox_level,
             justification: params.justification.clone(),
             arg0: None,
-        }
+        })
     }
 }
 
@@ -131,7 +157,7 @@ impl ToolHandler for ShellHandler {
                 let params: ShellToolCallParams = parse_arguments(&arguments)?;
                 let prefix_rule = params.prefix_rule.clone();
                 let exec_params =
-                    Self::to_exec_params(&params, turn.as_ref(), session.conversation_id);
+                    Self::to_exec_params(&params, turn.as_ref(), session.conversation_id)?;
                 Self::run_exec_like(RunExecLikeArgs {
                     tool_name: tool_name.clone(),
                     exec_params,
@@ -146,7 +172,7 @@ impl ToolHandler for ShellHandler {
             }
             ToolPayload::LocalShell { params } => {
                 let exec_params =
-                    Self::to_exec_params(&params, turn.as_ref(), session.conversation_id);
+                    Self::to_exec_params(&params, turn.as_ref(), session.conversation_id)?;
                 Self::run_exec_like(RunExecLikeArgs {
                     tool_name: tool_name.clone(),
                     exec_params,
@@ -213,7 +239,7 @@ impl ToolHandler for ShellCommandHandler {
             session.as_ref(),
             turn.as_ref(),
             session.conversation_id,
-        );
+        )?;
         ShellHandler::run_exec_like(RunExecLikeArgs {
             tool_name,
             exec_params,

@@ -174,7 +174,7 @@ pub(crate) fn effective_mcp_servers(
 pub async fn collect_mcp_snapshot(config: &Config) -> McpListToolsResponseEvent {
     let auth_manager = AuthManager::shared(
         config.codex_home.clone(),
-        false,
+        true,
         config.cli_auth_credentials_store_mode,
     );
     let auth = auth_manager.auth().await;

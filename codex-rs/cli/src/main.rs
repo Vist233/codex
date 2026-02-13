@@ -45,6 +45,7 @@ use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
 use codex_core::config::edit::ConfigEditsBuilder;
 use codex_core::config::find_codex_home;
+use codex_core::auth::infinity_env_only_auth_enabled;
 use codex_core::features::Stage;
 use codex_core::features::is_known_feature_key;
 use codex_core::terminal::TerminalName;
@@ -60,9 +61,9 @@ use codex_core::terminal::TerminalName;
     subcommand_negates_reqs = true,
     // The executable is sometimes invoked via a platform‑specific name like
     // `codex-x86_64-unknown-linux-musl`, but the help output should always use
-    // the generic `codex` command name that users run.
-    bin_name = "codex",
-    override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
+    // the generic `infinity-codex` command name that users run.
+    bin_name = "infinity-codex",
+    override_usage = "infinity-codex [OPTIONS] [PROMPT]\n       infinity-codex [OPTIONS] <COMMAND> [ARGS]"
 )]
 struct MultitoolCli {
     #[clap(flatten)]
@@ -663,6 +664,12 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()
             handle_app_exit(exit_info)?;
         }
         Some(Subcommand::Login(mut login_cli)) => {
+            if infinity_env_only_auth_enabled() {
+                eprintln!(
+                    "Login is disabled in env-only auth mode. Set CODEX_API_KEY or OPENAI_API_KEY before running infinity-codex."
+                );
+                std::process::exit(1);
+            }
             prepend_config_flags(
                 &mut login_cli.config_overrides,
                 root_config_overrides.clone(),
@@ -694,6 +701,12 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()
             }
         }
         Some(Subcommand::Logout(mut logout_cli)) => {
+            if infinity_env_only_auth_enabled() {
+                eprintln!(
+                    "Logout is disabled in env-only auth mode. Remove CODEX_API_KEY / OPENAI_API_KEY from your shell environment instead."
+                );
+                std::process::exit(1);
+            }
             prepend_config_flags(
                 &mut logout_cli.config_overrides,
                 root_config_overrides.clone(),

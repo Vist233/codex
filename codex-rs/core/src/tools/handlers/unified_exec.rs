@@ -20,6 +20,8 @@ use crate::unified_exec::WriteStdinRequest;
 use async_trait::async_trait;
 use codex_protocol::models::FunctionCallOutputBody;
 use serde::Deserialize;
+use std::path::Component;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -74,6 +76,31 @@ fn default_login() -> bool {
 
 fn default_tty() -> bool {
     false
+}
+
+fn resolve_workdir_strict(
+    turn_context: &crate::codex::TurnContext,
+    workdir: Option<String>,
+) -> Result<Option<PathBuf>, FunctionCallError> {
+    let Some(workdir) = workdir else {
+        return Ok(None);
+    };
+    if workdir.is_empty() {
+        return Ok(None);
+    }
+    let path = Path::new(&workdir);
+    if path.is_absolute() || path.components().any(|component| component == Component::ParentDir) {
+        return Err(FunctionCallError::RespondToModel(
+            "workdir must be a relative path inside the session working directory".to_string(),
+        ));
+    }
+    let resolved = turn_context.resolve_path(Some(workdir));
+    if !resolved.starts_with(&turn_context.cwd) {
+        return Err(FunctionCallError::RespondToModel(
+            "workdir escapes the session working directory".to_string(),
+        ));
+    }
+    Ok(Some(resolved))
 }
 
 #[async_trait]
@@ -163,9 +190,7 @@ impl ToolHandler for UnifiedExecHandler {
                     )));
                 }
 
-                let workdir = workdir.filter(|value| !value.is_empty());
-
-                let workdir = workdir.map(|dir| context.turn.resolve_path(Some(dir)));
+                let workdir = resolve_workdir_strict(context.turn.as_ref(), workdir)?;
                 let cwd = workdir.clone().unwrap_or_else(|| context.turn.cwd.clone());
 
                 if let Some(output) = intercept_apply_patch(
