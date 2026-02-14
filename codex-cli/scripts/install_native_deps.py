@@ -129,6 +129,13 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--repo",
+        help=(
+            "GitHub repo slug (owner/name) used to download workflow artifacts. "
+            "Defaults to parsing --workflow-url, then git remote.origin.url."
+        ),
+    )
+    parser.add_argument(
         "--component",
         dest="components",
         action="append",
@@ -169,13 +176,20 @@ def main() -> int:
     if not workflow_url:
         workflow_url = DEFAULT_WORKFLOW_URL
 
+    repo_slug = (
+        args.repo
+        or _repo_slug_from_workflow_url(workflow_url)
+        or _repo_slug_from_git_remote(CODEX_CLI_ROOT.parent)
+        or "openai/codex"
+    )
+
     workflow_id = workflow_url.rstrip("/").split("/")[-1]
-    print(f"Downloading native artifacts from workflow {workflow_id}...")
+    print(f"Downloading native artifacts from {repo_slug} workflow {workflow_id}...")
 
     with _gha_group(f"Download native artifacts from workflow {workflow_id}"):
         with tempfile.TemporaryDirectory(prefix="codex-native-artifacts-") as artifacts_dir_str:
             artifacts_dir = Path(artifacts_dir_str)
-            _download_artifacts(workflow_id, artifacts_dir)
+            _download_artifacts(workflow_id, repo_slug, artifacts_dir)
             install_binary_components(
                 artifacts_dir,
                 vendor_dir,
@@ -259,7 +273,7 @@ def fetch_rg(
     return [results[target] for target in targets]
 
 
-def _download_artifacts(workflow_id: str, dest_dir: Path) -> None:
+def _download_artifacts(workflow_id: str, repo_slug: str, dest_dir: Path) -> None:
     cmd = [
         "gh",
         "run",
@@ -267,10 +281,47 @@ def _download_artifacts(workflow_id: str, dest_dir: Path) -> None:
         "--dir",
         str(dest_dir),
         "--repo",
-        "openai/codex",
+        repo_slug,
         workflow_id,
     ]
     subprocess.check_call(cmd)
+
+
+def _repo_slug_from_workflow_url(workflow_url: str) -> str | None:
+    parsed = urlparse(workflow_url)
+    parts = parsed.path.strip("/").split("/")
+    if len(parts) >= 4 and parts[2] == "actions" and parts[3] == "runs":
+        return f"{parts[0]}/{parts[1]}"
+    return None
+
+
+def _repo_slug_from_git_remote(repo_root: Path) -> str | None:
+    try:
+        remote_url = subprocess.check_output(
+            ["git", "config", "--get", "remote.origin.url"],
+            cwd=repo_root,
+            text=True,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    if not remote_url:
+        return None
+
+    if remote_url.startswith("git@"):
+        suffix = remote_url.split(":", 1)[-1]
+    else:
+        parsed = urlparse(remote_url)
+        suffix = parsed.path.lstrip("/")
+
+    if suffix.endswith(".git"):
+        suffix = suffix[:-4]
+
+    if suffix.count("/") >= 1:
+        owner, repo = suffix.split("/", 1)
+        if owner and repo:
+            return f"{owner}/{repo}"
+    return None
 
 
 def install_binary_components(
