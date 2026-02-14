@@ -122,6 +122,8 @@ jobs:
     defaults:
       run:
         working-directory: codex-rs
+    env:
+      AZURE_SIGNING_ENABLED: ${{ secrets.AZURE_TRUSTED_SIGNING_CLIENT_ID != '' }}
 
     strategy:
       fail-fast: false
@@ -159,7 +161,7 @@ jobs:
           ls -lh target/${{ matrix.target }}/release/codex-command-runner.exe
 
       - name: Sign Windows binaries with Azure Trusted Signing
-        if: ${{ secrets.AZURE_TRUSTED_SIGNING_CLIENT_ID != '' }}
+        if: ${{ env.AZURE_SIGNING_ENABLED == 'true' }}
         uses: ./.github/actions/windows-code-sign
         with:
           target: ${{ matrix.target }}

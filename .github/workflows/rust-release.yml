@@ -48,7 +48,7 @@ jobs:
   build:
     needs: tag-check
     name: Build - ${{ matrix.runner }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.runs_on || matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -58,6 +58,7 @@ jobs:
         working-directory: codex-rs
     env:
       CARGO_PROFILE_RELEASE_LTO: ${{ contains(github.ref_name, '-alpha') && 'thin' || 'fat' }}
+      APPLE_CODE_SIGN_ENABLED: ${{ secrets.APPLE_CERTIFICATE_P12 != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_NOTARIZATION_KEY_P8 != '' && secrets.APPLE_NOTARIZATION_KEY_ID != '' && secrets.APPLE_NOTARIZATION_ISSUER_ID != '' }}
 
     strategy:
       fail-fast: false
@@ -65,7 +66,7 @@ jobs:
         include:
           - runner: macos-14
             target: aarch64-apple-darwin
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
           - runner: ubuntu-24.04
             target: x86_64-unknown-linux-musl
@@ -222,7 +223,7 @@ jobs:
           artifacts-dir: ${{ github.workspace }}/codex-rs/target/${{ matrix.target }}/release
 
       - name: MacOS code signing (binaries)
-        if: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE_P12 != '' }}
+        if: ${{ runner.os == 'macOS' && env.APPLE_CODE_SIGN_ENABLED == 'true' }}
         uses: ./.github/actions/macos-code-sign
         with:
           target: ${{ matrix.target }}
@@ -281,7 +282,7 @@ jobs:
           fi
 
       - name: MacOS code signing (dmg)
-        if: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE_P12 != '' }}
+        if: ${{ runner.os == 'macOS' && env.APPLE_CODE_SIGN_ENABLED == 'true' }}
         uses: ./.github/actions/macos-code-sign
         with:
           target: ${{ matrix.target }}
