@@ -1,7 +1,7 @@
 <h1 align="center">OpenAI infinityCodex CLI</h1>
 <p align="center">Lightweight coding agent that runs in your terminal</p>
 
-<p align="center"><code>npm i -g @infinity/codex</code></p>
+<p align="center"><code>npm i -g @zhangyvjing/infinity-codex</code></p>
 
 > [!IMPORTANT]
 > This is the documentation for the _legacy_ TypeScript implementation of the infinityCodex CLI. It has been superseded by the _Rust_ implementation. See the [README in the root of the infinityCodex repository](https://github.com/openai/codex/blob/main/README.md) for details.
@@ -77,7 +77,7 @@ Help us improve by filing issues or submitting PRs (see the section below for ho
 Install globally:
 
 ```shell
-npm install -g @infinity/codex
+npm install -g @zhangyvjing/infinity-codex
 ```
 
 Next, set your OpenAI API key as an environment variable:
@@ -248,7 +248,7 @@ Run infinityCodex head-less in pipelines. Example GitHub Action step:
 ```yaml
 - name: Update changelog via infinityCodex
   run: |
-    npm install -g @infinity/codex
+    npm install -g @zhangyvjing/infinity-codex
     export OPENAI_API_KEY="${{ secrets.OPENAI_KEY }}"
     infinity-codex -a auto-edit --quiet "update CHANGELOG for next release"
 ```
@@ -287,13 +287,13 @@ Below are a few bite-size examples you can copy-paste. Replace the text in quote
 <summary><strong>From npm (Recommended)</strong></summary>
 
 ```bash
-npm install -g @infinity/codex
+npm install -g @zhangyvjing/infinity-codex
 # or
-yarn global add @infinity/codex
+yarn global add @zhangyvjing/infinity-codex
 # or
-bun install -g @infinity/codex
+bun install -g @zhangyvjing/infinity-codex
 # or
-pnpm add -g @infinity/codex
+pnpm add -g @zhangyvjing/infinity-codex
 ```
 
 </details>
@@ -527,7 +527,7 @@ infinityCodex CLI **does** support OpenAI organizations with [Zero Data Retentio
 OpenAI rejected the request. Error details: Status: 400, Code: unsupported_parameter, Type: invalid_request_error, Message: 400 Previous response cannot be used for this organization due to Zero Data Retention.
 ```
 
-You may need to upgrade to a more recent version with: `npm i -g @infinity/codex@latest`
+You may need to upgrade to a more recent version with: `npm i -g @zhangyvjing/infinity-codex@latest`
 
 ---
 

@@ -7,7 +7,7 @@ We provide infinityCodex CLI as a standalone, native executable to ensure a zero
 Today, the easiest way to install infinityCodex is via `npm`:
 
 ```shell
-npm i -g @infinity/codex
+npm i -g @zhangyvjing/infinity-codex
 infinity-codex
 ```
 

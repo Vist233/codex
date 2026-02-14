@@ -13,12 +13,12 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const PLATFORM_PACKAGE_BY_TARGET = {
-  "x86_64-unknown-linux-musl": "@infinity/codex-linux-x64",
-  "aarch64-unknown-linux-musl": "@infinity/codex-linux-arm64",
-  "x86_64-apple-darwin": "@infinity/codex-darwin-x64",
-  "aarch64-apple-darwin": "@infinity/codex-darwin-arm64",
-  "x86_64-pc-windows-msvc": "@infinity/codex-win32-x64",
-  "aarch64-pc-windows-msvc": "@infinity/codex-win32-arm64",
+  "x86_64-unknown-linux-musl": "@zhangyvjing/infinity-codex-linux-x64",
+  "aarch64-unknown-linux-musl": "@zhangyvjing/infinity-codex-linux-arm64",
+  "x86_64-apple-darwin": "@zhangyvjing/infinity-codex-darwin-x64",
+  "aarch64-apple-darwin": "@zhangyvjing/infinity-codex-darwin-arm64",
+  "x86_64-pc-windows-msvc": "@zhangyvjing/infinity-codex-win32-x64",
+  "aarch64-pc-windows-msvc": "@zhangyvjing/infinity-codex-win32-arm64",
 };
 
 const { platform, arch } = process;
@@ -95,8 +95,8 @@ try {
     const packageManager = detectPackageManager();
     const updateCommand =
       packageManager === "bun"
-        ? "bun install -g @infinity/codex@latest"
-        : "npm install -g @infinity/codex@latest";
+        ? "bun install -g @zhangyvjing/infinity-codex@latest"
+        : "npm install -g @zhangyvjing/infinity-codex@latest";
     throw new Error(
       `Missing optional dependency ${platformPackage}. Reinstall Codex: ${updateCommand}`,
     );
@@ -107,8 +107,8 @@ if (!vendorRoot) {
   const packageManager = detectPackageManager();
   const updateCommand =
     packageManager === "bun"
-      ? "bun install -g @infinity/codex@latest"
-      : "npm install -g @infinity/codex@latest";
+      ? "bun install -g @zhangyvjing/infinity-codex@latest"
+      : "npm install -g @zhangyvjing/infinity-codex@latest";
   throw new Error(
     `Missing optional dependency ${platformPackage}. Reinstall Codex: ${updateCommand}`,
   );
