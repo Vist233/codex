@@ -181,7 +181,6 @@ use crate::protocol::ReasoningContentDeltaEvent;
 use crate::protocol::ReasoningRawContentDeltaEvent;
 use crate::protocol::RequestUserInputEvent;
 use crate::protocol::ReviewDecision;
-use crate::protocol::SandboxPolicy;
 use crate::protocol::SessionConfiguredEvent;
 use crate::protocol::SessionNetworkProxyRuntime;
 use crate::protocol::SkillDependencies as ProtocolSkillDependencies;
