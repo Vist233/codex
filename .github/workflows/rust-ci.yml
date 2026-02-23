@@ -461,9 +461,7 @@ jobs:
     runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || (matrix.runner == 'windows-x64' && 'windows-latest' || matrix.runner == 'windows-arm64' && 'windows-latest' || matrix.runner == 'macos-15-xlarge' && 'macos-15' || matrix.runner) }}
     timeout-minutes: 30
     needs: changed
-    # Forks map windows-arm64 to hosted x64 runners, which cannot execute arm64
-    # test binaries (os error 216). Keep this lane on openai/codex only.
-    if: ${{ (needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push') && (github.repository_owner == 'openai' || matrix.runner != 'windows-arm64') }}
+    if: ${{ needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push' }}
     defaults:
       run:
         working-directory: codex-rs
@@ -602,10 +600,16 @@ jobs:
 
       - name: tests
         id: test
+        if: ${{ github.repository_owner == 'openai' || matrix.runner != 'windows-arm64' }}
         run: cargo nextest run --all-features --no-fail-fast --target ${{ matrix.target }} --cargo-profile ci-test --timings
         env:
           RUST_BACKTRACE: 1
           NEXTEST_STATUS_LEVEL: leak
+
+      - name: Skip windows-arm64 tests on forks
+        if: ${{ github.repository_owner != 'openai' && matrix.runner == 'windows-arm64' }}
+        run: |
+          echo "Skipping windows-arm64 tests on forks because hosted x64 runners cannot execute aarch64 Windows test binaries."
 
       - name: Upload Cargo timings (nextest)
         if: always()
