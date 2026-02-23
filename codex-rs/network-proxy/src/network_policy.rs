@@ -26,7 +26,8 @@ impl NetworkProtocol {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum NetworkPolicyDecision {
     Deny,
     Ask,
@@ -41,7 +42,8 @@ impl NetworkPolicyDecision {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum NetworkDecisionSource {
     BaselinePolicy,
     ModeGuard,
@@ -69,7 +71,6 @@ pub struct NetworkPolicyRequest {
     pub method: Option<String>,
     pub command: Option<String>,
     pub exec_policy_hint: Option<String>,
-    pub attempt_id: Option<String>,
 }
 
 pub struct NetworkPolicyRequestArgs {
@@ -80,7 +81,6 @@ pub struct NetworkPolicyRequestArgs {
     pub method: Option<String>,
     pub command: Option<String>,
     pub exec_policy_hint: Option<String>,
-    pub attempt_id: Option<String>,
 }
 
 impl NetworkPolicyRequest {
@@ -93,7 +93,6 @@ impl NetworkPolicyRequest {
             method,
             command,
             exec_policy_hint,
-            attempt_id,
         } = args;
         Self {
             protocol,
@@ -103,7 +102,6 @@ impl NetworkPolicyRequest {
             method,
             command,
             exec_policy_hint,
-            attempt_id,
         }
     }
 }
@@ -256,7 +254,6 @@ mod tests {
             method: Some("GET".to_string()),
             command: None,
             exec_policy_hint: None,
-            attempt_id: None,
         });
 
         let decision = evaluate_host_policy(&state, Some(&decider), &request)
@@ -290,7 +287,6 @@ mod tests {
             method: Some("GET".to_string()),
             command: None,
             exec_policy_hint: None,
-            attempt_id: None,
         });
 
         let decision = evaluate_host_policy(&state, Some(&decider), &request)
@@ -331,7 +327,6 @@ mod tests {
             method: Some("GET".to_string()),
             command: None,
             exec_policy_hint: None,
-            attempt_id: None,
         });
 
         let decision = evaluate_host_policy(&state, Some(&decider), &request)

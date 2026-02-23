@@ -11,6 +11,7 @@ use crate::protocol::TokenUsage;
 use crate::protocol::TokenUsageInfo;
 use crate::tasks::RegularTask;
 use crate::truncate::TruncationPolicy;
+use codex_protocol::protocol::TurnContextItem;
 
 /// Persistent, session-scoped state previously stored directly on `Session`.
 pub(crate) struct SessionState {
@@ -20,12 +21,9 @@ pub(crate) struct SessionState {
     pub(crate) server_reasoning_included: bool,
     pub(crate) dependency_env: HashMap<String, String>,
     pub(crate) mcp_dependency_prompted: HashSet<String>,
-    /// Whether the session's initial context has been seeded into history.
-    ///
-    /// TODO(owen): This is a temporary solution to avoid updating a thread's updated_at
-    /// timestamp when resuming a session. Remove this once SQLite is in place.
-    pub(crate) initial_context_seeded: bool,
-    /// Previous model seen by the session, used for model-switch handling on task start.
+    /// Model used by the latest regular user turn, used for model-switch handling
+    /// on subsequent regular turns (including full-context reinjection after
+    /// resume or `/compact`).
     previous_model: Option<String>,
     /// Startup regular task pre-created during session initialization.
     pub(crate) startup_regular_task: Option<RegularTask>,
@@ -44,7 +42,6 @@ impl SessionState {
             server_reasoning_included: false,
             dependency_env: HashMap::new(),
             mcp_dependency_prompted: HashSet::new(),
-            initial_context_seeded: false,
             previous_model: None,
             startup_regular_task: None,
             active_mcp_tool_selection: None,
@@ -72,12 +69,26 @@ impl SessionState {
         self.history.clone()
     }
 
-    pub(crate) fn replace_history(&mut self, items: Vec<ResponseItem>) {
+    pub(crate) fn replace_history(
+        &mut self,
+        items: Vec<ResponseItem>,
+        reference_context_item: Option<TurnContextItem>,
+    ) {
         self.history.replace(items);
+        self.history
+            .set_reference_context_item(reference_context_item);
     }
 
     pub(crate) fn set_token_info(&mut self, info: Option<TokenUsageInfo>) {
         self.history.set_token_info(info);
+    }
+
+    pub(crate) fn set_reference_context_item(&mut self, item: Option<TurnContextItem>) {
+        self.history.set_reference_context_item(item);
+    }
+
+    pub(crate) fn reference_context_item(&self) -> Option<TurnContextItem> {
+        self.history.reference_context_item()
     }
 
     // Token/rate limit helpers
@@ -168,6 +179,27 @@ impl SessionState {
 
         self.active_mcp_tool_selection = Some(merged.clone());
         merged
+    }
+
+    pub(crate) fn set_mcp_tool_selection(&mut self, tool_names: Vec<String>) {
+        if tool_names.is_empty() {
+            self.active_mcp_tool_selection = None;
+            return;
+        }
+
+        let mut selected = Vec::new();
+        let mut seen = HashSet::new();
+        for tool_name in tool_names {
+            if seen.insert(tool_name.clone()) {
+                selected.push(tool_name);
+            }
+        }
+
+        self.active_mcp_tool_selection = if selected.is_empty() {
+            None
+        } else {
+            Some(selected)
+        };
     }
 
     pub(crate) fn get_mcp_tool_selection(&self) -> Option<Vec<String>> {
@@ -289,6 +321,40 @@ mod tests {
         state.merge_mcp_tool_selection(vec!["mcp__rmcp__echo".to_string()]);
 
         state.clear_mcp_tool_selection();
+
+        assert_eq!(state.get_mcp_tool_selection(), None);
+    }
+
+    #[tokio::test]
+    async fn set_mcp_tool_selection_deduplicates_and_preserves_order() {
+        let session_configuration = make_session_configuration_for_tests().await;
+        let mut state = SessionState::new(session_configuration);
+        state.merge_mcp_tool_selection(vec!["mcp__rmcp__old".to_string()]);
+
+        state.set_mcp_tool_selection(vec![
+            "mcp__rmcp__echo".to_string(),
+            "mcp__rmcp__image".to_string(),
+            "mcp__rmcp__echo".to_string(),
+            "mcp__rmcp__search".to_string(),
+        ]);
+
+        assert_eq!(
+            state.get_mcp_tool_selection(),
+            Some(vec![
+                "mcp__rmcp__echo".to_string(),
+                "mcp__rmcp__image".to_string(),
+                "mcp__rmcp__search".to_string(),
+            ])
+        );
+    }
+
+    #[tokio::test]
+    async fn set_mcp_tool_selection_empty_input_clears_selection() {
+        let session_configuration = make_session_configuration_for_tests().await;
+        let mut state = SessionState::new(session_configuration);
+        state.merge_mcp_tool_selection(vec!["mcp__rmcp__echo".to_string()]);
+
+        state.set_mcp_tool_selection(Vec::new());
 
         assert_eq!(state.get_mcp_tool_selection(), None);
     }

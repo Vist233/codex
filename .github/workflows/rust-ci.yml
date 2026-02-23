@@ -86,11 +86,14 @@ jobs:
   # --- CI to validate on different os/targets --------------------------------
   lint_build:
     name: Lint/Build — ${{ matrix.runner }} - ${{ matrix.target }}${{ matrix.profile == 'release' && ' (release)' || '' }}
-    runs-on: ${{ matrix.runs_on || matrix.runner }}
+    # Forks do not have access to OpenAI self-hosted runner groups.
+    # Keep custom runner routing on openai/codex, and fall back to hosted
+    # labels elsewhere.
+    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || matrix.runner }}
     timeout-minutes: 30
     needs: changed
     # Keep job-level if to avoid spinning up runners when not needed
-    if: ${{ needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push' }}
+    if: ${{ (needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push') && (github.repository_owner == 'openai' || matrix.runner != 'windows-arm64') }}
     defaults:
       run:
         working-directory: codex-rs
@@ -452,10 +455,13 @@ jobs:
 
   tests:
     name: Tests — ${{ matrix.runner }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.runs_on || matrix.runner }}
+    # Forks do not have access to OpenAI self-hosted runner groups.
+    # Keep custom runner routing on openai/codex, and fall back to hosted
+    # labels elsewhere.
+    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || matrix.runner }}
     timeout-minutes: 30
     needs: changed
-    if: ${{ needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push' }}
+    if: ${{ (needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push') && (github.repository_owner == 'openai' || matrix.runner != 'windows-arm64') }}
     defaults:
       run:
         working-directory: codex-rs
@@ -580,6 +586,17 @@ jobs:
         with:
           tool: nextest
           version: 0.9.103
+
+      - name: Enable unprivileged user namespaces (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Required for bubblewrap to work on Linux CI runners.
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
+          # Ubuntu 24.04+ can additionally gate unprivileged user namespaces
+          # behind AppArmor.
+          if sudo sysctl -a 2>/dev/null | grep -q '^kernel.apparmor_restrict_unprivileged_userns'; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
 
       - name: tests
         id: test

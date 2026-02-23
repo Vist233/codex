@@ -95,6 +95,8 @@ SELECT
     created_at,
     updated_at,
     source,
+    agent_nickname,
+    agent_role,
     model_provider,
     cwd,
     cli_version,
@@ -191,7 +193,13 @@ LEFT JOIN jobs
 
         let rows = sqlx::query(
             r#"
-SELECT so.thread_id, so.source_updated_at, so.raw_memory, so.rollout_summary, so.generated_at
+SELECT
+    so.thread_id,
+    so.source_updated_at,
+    so.raw_memory,
+    so.rollout_summary,
+    so.rollout_slug,
+    so.generated_at
      , COALESCE(t.cwd, '') AS cwd
 FROM stage1_outputs AS so
 LEFT JOIN threads AS t
@@ -407,6 +415,7 @@ WHERE kind = ? AND job_key = ?
     /// - sets `status='done'` and `last_success_watermark = input_watermark`
     /// - upserts `stage1_outputs` for the thread, replacing existing output only
     ///   when `source_updated_at` is newer or equal
+    /// - persists optional `rollout_slug` for rollout summary artifact naming
     /// - enqueues/advances the global phase-2 job watermark using
     ///   `source_updated_at`
     pub async fn mark_stage1_job_succeeded(
@@ -416,6 +425,7 @@ WHERE kind = ? AND job_key = ?
         source_updated_at: i64,
         raw_memory: &str,
         rollout_summary: &str,
+        rollout_slug: Option<&str>,
     ) -> anyhow::Result<bool> {
         let now = Utc::now().timestamp();
         let thread_id = thread_id.to_string();
@@ -454,12 +464,14 @@ INSERT INTO stage1_outputs (
     source_updated_at,
     raw_memory,
     rollout_summary,
+    rollout_slug,
     generated_at
-) VALUES (?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(thread_id) DO UPDATE SET
     source_updated_at = excluded.source_updated_at,
     raw_memory = excluded.raw_memory,
     rollout_summary = excluded.rollout_summary,
+    rollout_slug = excluded.rollout_slug,
     generated_at = excluded.generated_at
 WHERE excluded.source_updated_at >= stage1_outputs.source_updated_at
             "#,
@@ -468,6 +480,7 @@ WHERE excluded.source_updated_at >= stage1_outputs.source_updated_at
         .bind(source_updated_at)
         .bind(raw_memory)
         .bind(rollout_summary)
+        .bind(rollout_slug)
         .bind(now)
         .execute(&mut *tx)
         .await?;
@@ -485,7 +498,7 @@ WHERE excluded.source_updated_at >= stage1_outputs.source_updated_at
     /// - sets `status='done'` and `last_success_watermark = input_watermark`
     /// - deletes any existing `stage1_outputs` row for the thread
     /// - enqueues/advances the global phase-2 job watermark using the claimed
-    ///   `input_watermark`
+    ///   `input_watermark` only when deleting an existing `stage1_outputs` row
     pub async fn mark_stage1_job_succeeded_no_output(
         &self,
         thread_id: ThreadId,
@@ -535,7 +548,7 @@ WHERE kind = ? AND job_key = ? AND ownership_token = ?
         .await?
         .try_get::<i64, _>("input_watermark")?;
 
-        sqlx::query(
+        let deleted_rows = sqlx::query(
             r#"
 DELETE FROM stage1_outputs
 WHERE thread_id = ?
@@ -543,9 +556,12 @@ WHERE thread_id = ?
         )
         .bind(thread_id.as_str())
         .execute(&mut *tx)
-        .await?;
+        .await?
+        .rows_affected();
 
-        enqueue_global_consolidation_with_executor(&mut *tx, source_updated_at).await?;
+        if deleted_rows > 0 {
+            enqueue_global_consolidation_with_executor(&mut *tx, source_updated_at).await?;
+        }
 
         tx.commit().await?;
         Ok(true)
