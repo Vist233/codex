@@ -28,6 +28,18 @@ Run `just fmt` (in `codex-rs` directory) automatically after you have finished m
 
 Before finalizing a large change to `codex-rs`, run `just fix -p <project>` (in `codex-rs` directory) to fix any linter issues in the code. Prefer scoping with `-p` to avoid slow workspace‑wide Clippy builds; only run `just fix` without `-p` if you changed shared crates. Do not re-run tests after running `fix` or `fmt`.
 
+## Fork CI and Release Notes
+
+- In `.github/workflows/rust-ci.yml`, do not reference `matrix.*` in job-level `if:` expressions. GitHub evaluates job-level `if` before matrix expansion and will fail workflow parsing.
+- For fork compatibility, keep runner fallback logic in `runs-on` expressions. OpenAI-only self-hosted labels should degrade to GitHub-hosted runners on forks.
+- Keep `.github/workflows/ci.yml` npm staging version dynamic (read from `codex-rs/Cargo.toml`) instead of hard-coding an upstream release number.
+- Release flow is tag-driven via `rust-release.yml`:
+  1. Bump `codex-rs/Cargo.toml` workspace version.
+  2. Regenerate `codex-rs/Cargo.lock` (for example via `cargo metadata --format-version=1` in `codex-rs`).
+  3. Commit and push `main`.
+  4. Create and push tag `rust-vX.Y.Z` (must match Cargo version exactly).
+  5. `rust-release` and downstream npm publish jobs run from the tag push.
+
 ## TUI style conventions
 
 See `codex-rs/tui/styles.md`.
@@ -81,6 +93,11 @@ When UI or text output changes intentionally, update the snapshots as follows:
   - `cargo insta show -p codex-tui path/to/file.snap.new`
 - Only if you intend to accept all new snapshots in this crate, run:
   - `cargo insta accept -p codex-tui`
+
+If your installed `cargo-insta` does not support `-p`, use:
+
+- `cargo insta pending-snapshots --manifest-path tui/Cargo.toml`
+- `cargo insta accept --manifest-path tui/Cargo.toml`
 
 If you don’t have the tool:
 
