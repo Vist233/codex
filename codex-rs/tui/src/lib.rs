@@ -50,6 +50,7 @@ use cwd_prompt::CwdPromptAction;
 use cwd_prompt::CwdPromptOutcome;
 use cwd_prompt::CwdSelection;
 use std::fs::OpenOptions;
+use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
 use tracing::error;
@@ -497,7 +498,8 @@ async fn run_ratatui_app(
             .or_else(read_openai_api_key_from_env)
             .is_none()
     {
-        eprintln!(
+        let _ = writeln!(
+            std::io::stderr(),
             "Infinity Codex requires CODEX_API_KEY or OPENAI_API_KEY when env-only auth is enabled."
         );
         std::process::exit(1);

@@ -39,7 +39,9 @@ jobs:
           # TODO: Enable Windows once we fix the toolchain issues there.
           #- os: windows-latest
           #  target: x86_64-pc-windows-gnullvm
-    runs-on: ${{ matrix.os }}
+    # Forks do not have access to OpenAI-specific runner labels like
+    # macos-15-xlarge, so map to a hosted equivalent.
+    runs-on: ${{ github.repository_owner == 'openai' && matrix.os || (matrix.os == 'macos-15-xlarge' && 'macos-15' || matrix.os) }}
 
     # Configure a human readable name for each job
     name: Local Bazel build on ${{ matrix.os }} for ${{ matrix.target }}
