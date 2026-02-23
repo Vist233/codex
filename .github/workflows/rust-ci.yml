@@ -89,11 +89,11 @@ jobs:
     # Forks do not have access to OpenAI self-hosted runner groups.
     # Keep custom runner routing on openai/codex, and fall back to hosted
     # labels elsewhere.
-    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || matrix.runner }}
+    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || (matrix.runner == 'windows-x64' && 'windows-latest' || matrix.runner == 'windows-arm64' && 'windows-latest' || matrix.runner) }}
     timeout-minutes: 30
     needs: changed
     # Keep job-level if to avoid spinning up runners when not needed
-    if: ${{ (needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push') && (github.repository_owner == 'openai' || matrix.runner != 'windows-arm64') }}
+    if: ${{ needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push' }}
     defaults:
       run:
         working-directory: codex-rs
@@ -458,10 +458,10 @@ jobs:
     # Forks do not have access to OpenAI self-hosted runner groups.
     # Keep custom runner routing on openai/codex, and fall back to hosted
     # labels elsewhere.
-    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || matrix.runner }}
+    runs-on: ${{ github.repository_owner == 'openai' && (matrix.runs_on || matrix.runner) || (matrix.runner == 'windows-x64' && 'windows-latest' || matrix.runner == 'windows-arm64' && 'windows-latest' || matrix.runner) }}
     timeout-minutes: 30
     needs: changed
-    if: ${{ (needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push') && (github.repository_owner == 'openai' || matrix.runner != 'windows-arm64') }}
+    if: ${{ needs.changed.outputs.codex == 'true' || needs.changed.outputs.workflows == 'true' || github.event_name == 'push' }}
     defaults:
       run:
         working-directory: codex-rs
